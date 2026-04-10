@@ -1,6 +1,6 @@
 # NgIndia Microfrontend (MFE) Demo
 
-This project demonstrates **Microfrontend Architecture** using **Angular 17** and **Webpack Module Federation** via [`@angular-architects/module-federation`](https://github.com/angular-architects/module-federation-plugin).
+This project demonstrates **Microfrontend Architecture** using **Angular 19** and **Webpack Module Federation** via [`@angular-architects/module-federation`](https://github.com/angular-architects/module-federation-plugin).
 
 ## Architecture
 
@@ -86,8 +86,8 @@ exposes: {
 
 ## Tech Stack
 
-- Angular 17 (Standalone Components)
+- Angular 19.2.20 (Standalone Components)
 - Webpack Module Federation
-- @angular-architects/module-federation v17
-- TypeScript 5.4
+- @angular-architects/module-federation v19
+- TypeScript 5.7
 - SCSS
