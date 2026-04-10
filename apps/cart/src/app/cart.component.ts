@@ -1,11 +1,12 @@
 import { Component, inject } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { CartStateService } from '@mfe-shop/cart-state';
 
 @Component({
   selector: 'app-cart',
   standalone: true,
-  imports: [CurrencyPipe],
+  imports: [CurrencyPipe, RouterLink],
   template: `
     <div class="cart">
       <h2>Shopping Cart</h2>
@@ -30,7 +31,7 @@ import { CartStateService } from '@mfe-shop/cart-state';
           <p class="total">Total: {{ cartTotal() | currency }}</p>
           <div class="actions">
             <button class="clear-btn" (click)="onClear()">Clear Cart</button>
-            <a class="checkout-btn" href="/checkout">Proceed to Checkout</a>
+            <a class="checkout-btn" routerLink="/checkout">Proceed to Checkout</a>
           </div>
         </div>
       }

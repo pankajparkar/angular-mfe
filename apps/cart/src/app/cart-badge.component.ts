@@ -1,11 +1,12 @@
 import { Component, inject, signal, ElementRef, HostListener } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { CartStateService } from '@mfe-shop/cart-state';
 
 @Component({
   selector: 'app-cart-badge',
   standalone: true,
-  imports: [CurrencyPipe],
+  imports: [CurrencyPipe, RouterLink],
   template: `
     <div class="cart-badge-container">
       <button class="cart-btn" (click)="toggle()">
@@ -31,7 +32,7 @@ import { CartStateService } from '@mfe-shop/cart-state';
             </ul>
             <div class="popover-footer">
               <strong>Total: {{ cartState.cartTotal() | currency }}</strong>
-              <a class="view-cart" href="/cart">View Cart →</a>
+              <a class="view-cart" routerLink="/cart" (click)="open.set(false)">View Cart →</a>
             </div>
           }
         </div>
