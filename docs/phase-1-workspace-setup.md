@@ -33,22 +33,27 @@ npx create-nx-workspace@latest angular-mfe \
   --packageManager=npm
 ```
 
-This creates the monorepo with `shell` as the first app.
+This creates the monorepo with `shell` as the first app under `apps/`.
 
 ---
 
 ## Step 2: Generate Remote Apps
 
+All apps go directly under the `apps/` directory using the `--directory` flag:
+
 ```bash
 cd angular-mfe
 
 npx nx g @nx/angular:application catalog \
+  --directory=apps/catalog \
   --style=scss --ssr=false --e2eTestRunner=none --routing=true --port=4201
 
 npx nx g @nx/angular:application cart \
+  --directory=apps/cart \
   --style=scss --ssr=false --e2eTestRunner=none --routing=true --port=4202
 
 npx nx g @nx/angular:application checkout \
+  --directory=apps/checkout \
   --style=scss --ssr=false --e2eTestRunner=none --routing=true --port=4203
 ```
 
@@ -89,6 +94,8 @@ npx nx g @angular-architects/native-federation:init \
 - For the **host**: adds remote URLs inline in `main.ts`
 - For **remotes**: adds `exposes` config in `federation.config.js`
 
+> **Note:** After running the generators, verify the `exposes` paths in each remote's `federation.config.js` use `./apps/<name>/src/...` (matching the directory structure).
+
 ---
 
 ## Step 5: Key Files Explained
@@ -96,7 +103,7 @@ npx nx g @angular-architects/native-federation:init \
 ### Shell `main.ts` (Host)
 
 ```typescript
-// shell/src/main.ts
+// apps/shell/src/main.ts
 import { initFederation } from '@angular-architects/native-federation';
 
 initFederation({
@@ -114,7 +121,7 @@ The shell knows where each remote lives. `initFederation()` fetches each remote'
 ### Remote `main.ts` (e.g., Catalog)
 
 ```typescript
-// catalog/src/main.ts
+// apps/catalog/src/main.ts
 import { initFederation } from '@angular-architects/native-federation';
 
 initFederation()
@@ -128,16 +135,26 @@ Remotes call `initFederation()` with no args — they don't consume other remote
 ### Shell `federation.config.js` (Host)
 
 ```javascript
-// shell/federation.config.js
+// apps/shell/federation.config.js
 const { withNativeFederation, shareAll } = require('@angular-architects/native-federation/config');
 
 module.exports = withNativeFederation({
   name: 'shell',
+
   shared: {
     ...shareAll({ singleton: true, strictVersion: true, requiredVersion: 'auto' }),
   },
-  skip: ['rxjs/ajax', 'rxjs/fetch', 'rxjs/testing', 'rxjs/webSocket'],
-  features: { ignoreUnusedDeps: true }
+
+  skip: [
+    'rxjs/ajax',
+    'rxjs/fetch',
+    'rxjs/testing',
+    'rxjs/webSocket',
+  ],
+
+  features: {
+    ignoreUnusedDeps: true,
+  },
 });
 ```
 
@@ -146,19 +163,30 @@ Host has **no `exposes`** — it only consumes remotes.
 ### Remote `federation.config.js` (e.g., Catalog)
 
 ```javascript
-// catalog/federation.config.js
+// apps/catalog/federation.config.js
 const { withNativeFederation, shareAll } = require('@angular-architects/native-federation/config');
 
 module.exports = withNativeFederation({
   name: 'catalog',
+
   exposes: {
-    './routes': './catalog/src/app/app.routes.ts',
+    './routes': './apps/catalog/src/app/app.routes.ts',
   },
+
   shared: {
     ...shareAll({ singleton: true, strictVersion: true, requiredVersion: 'auto' }),
   },
-  skip: ['rxjs/ajax', 'rxjs/fetch', 'rxjs/testing', 'rxjs/webSocket'],
-  features: { ignoreUnusedDeps: true }
+
+  skip: [
+    'rxjs/ajax',
+    'rxjs/fetch',
+    'rxjs/testing',
+    'rxjs/webSocket',
+  ],
+
+  features: {
+    ignoreUnusedDeps: true,
+  },
 });
 ```
 
@@ -169,7 +197,7 @@ Remotes **expose** entry points (here, routes). The shell loads them via `loadRe
 ## Step 6: Shell Routing with `loadRemoteModule`
 
 ```typescript
-// shell/src/app/app.routes.ts
+// apps/shell/src/app/app.routes.ts
 import { Route } from '@angular/router';
 import { loadRemoteModule } from '@angular-architects/native-federation';
 
@@ -208,7 +236,7 @@ export const appRoutes: Route[] = [
 ## Step 7: Shell UI (Header + Navigation)
 
 ```typescript
-// shell/src/app/app.ts
+// apps/shell/src/app/app.ts
 @Component({
   imports: [RouterModule],
   selector: 'app-root',
@@ -221,7 +249,7 @@ export class App {
 ```
 
 ```html
-<!-- shell/src/app/app.html -->
+<!-- apps/shell/src/app/app.html -->
 <header class="shell-header">
   <h1>{{ title }}</h1>
   <nav>
@@ -241,37 +269,39 @@ export class App {
 
 ```
 angular-mfe/
-├── shell/                          # Host app (port 4200)
-│   ├── federation.config.js        # No exposes, consumes remotes
-│   ├── project.json
-│   └── src/
-│       ├── main.ts                 # initFederation({ remotes... })
-│       ├── bootstrap.ts            # bootstrapApplication()
-│       └── app/
-│           ├── app.ts
-│           ├── app.html            # Header + router-outlet
-│           ├── app.scss
-│           ├── app.config.ts
-│           └── app.routes.ts       # loadRemoteModule() calls
+├── apps/
+│   ├── shell/                          # Host app (port 4200)
+│   │   ├── federation.config.js        # No exposes, consumes remotes
+│   │   ├── project.json
+│   │   └── src/
+│   │       ├── main.ts                 # initFederation({ remotes... })
+│   │       ├── bootstrap.ts            # bootstrapApplication()
+│   │       └── app/
+│   │           ├── app.ts
+│   │           ├── app.html            # Header + router-outlet
+│   │           ├── app.scss
+│   │           ├── app.config.ts
+│   │           └── app.routes.ts       # loadRemoteModule() calls
+│   │
+│   ├── catalog/                        # Remote (port 4201)
+│   │   ├── federation.config.js        # exposes: './routes'
+│   │   ├── project.json
+│   │   └── src/
+│   │       ├── main.ts                 # initFederation() — no args
+│   │       ├── bootstrap.ts
+│   │       └── app/
+│   │           ├── app.routes.ts       # Exposed to shell
+│   │           └── catalog.component.ts
+│   │
+│   ├── cart/                           # Remote (port 4202)
+│   │   ├── federation.config.js        # exposes: './routes'
+│   │   └── src/...                     # Same pattern as catalog
+│   │
+│   └── checkout/                       # Remote (port 4203)
+│       ├── federation.config.js        # exposes: './routes'
+│       └── src/...                     # Same pattern as catalog
 │
-├── catalog/                        # Remote (port 4201)
-│   ├── federation.config.js        # exposes: './routes'
-│   ├── project.json
-│   └── src/
-│       ├── main.ts                 # initFederation() — no args
-│       ├── bootstrap.ts
-│       └── app/
-│           ├── app.routes.ts       # Exposed to shell
-│           └── catalog.component.ts
-│
-├── cart/                           # Remote (port 4202)
-│   ├── federation.config.js        # exposes: './routes'
-│   └── src/...                     # Same pattern as catalog
-│
-├── checkout/                       # Remote (port 4203)
-│   ├── federation.config.js        # exposes: './routes'
-│   └── src/...                     # Same pattern as catalog
-│
+├── libs/                               # Shared libraries (Phase 2+)
 ├── nx.json
 ├── package.json
 └── tsconfig.base.json
@@ -326,4 +356,4 @@ npx nx graph
 
 ## Next: Phase 2
 
-Shared cart state using Angular Signals + CartBadge widget pattern.
+Federation wiring deep-dive — manifest vs inline, shared dependencies, and Network tab verification.
