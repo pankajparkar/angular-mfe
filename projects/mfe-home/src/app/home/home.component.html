@@ -1,0 +1,13 @@
+<section class="home-container">
+  <h2>Welcome to NgIndia 2024</h2>
+  <p>This is the <strong>Home</strong> Microfrontend loaded via Module Federation.</p>
+
+  <div class="speakers">
+    <h3>Featured Sessions</h3>
+    <ul>
+      <li *ngFor="let speaker of speakers">
+        <strong>{{ speaker.name }}</strong>: {{ speaker.topic }}
+      </li>
+    </ul>
+  </div>
+</section>
