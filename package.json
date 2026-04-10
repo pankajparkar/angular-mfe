@@ -1,0 +1,49 @@
+{
+  "name": "angular-mfe-workspace",
+  "version": "0.0.0",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve shell",
+    "start:shell": "ng serve shell --port 4200",
+    "start:mfe-home": "ng serve mfe-home --port 4201",
+    "start:mfe-profile": "ng serve mfe-profile --port 4202",
+    "build": "ng build",
+    "build:all": "ng build shell && ng build mfe-home && ng build mfe-profile",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test",
+    "run:all": "node node_modules/@angular-architects/module-federation/src/server/mf-dev-server.js"
+  },
+  "private": true,
+  "overrides": {
+    "serialize-javascript": "7.0.5",
+    "tar": "7.5.13"
+  },
+  "dependencies": {
+    "@angular-architects/module-federation": "~19.0.3",
+    "@angular/animations": "~19.2.20",
+    "@angular/common": "~19.2.20",
+    "@angular/compiler": "~19.2.20",
+    "@angular/core": "~19.2.20",
+    "@angular/forms": "~19.2.20",
+    "@angular/platform-browser": "~19.2.20",
+    "@angular/platform-browser-dynamic": "~19.2.20",
+    "@angular/router": "~19.2.20",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0",
+    "zone.js": "~0.15.0"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-angular": "~19.2.24",
+    "@angular/cli": "~19.2.24",
+    "@angular/compiler-cli": "~19.2.20",
+    "@types/jasmine": "~5.1.0",
+    "jasmine-core": "~5.1.0",
+    "karma": "~6.4.0",
+    "karma-chrome-launcher": "~3.2.0",
+    "karma-coverage": "~2.2.0",
+    "karma-jasmine": "~5.1.0",
+    "karma-jasmine-html-reporter": "~2.1.0",
+    "ngx-build-plus": "~19.0.0",
+    "typescript": "~5.7.3"
+  }
+}
