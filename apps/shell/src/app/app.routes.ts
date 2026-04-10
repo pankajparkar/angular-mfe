@@ -1,21 +1,28 @@
 import { Route } from '@angular/router';
 import { loadRemoteModule } from '@angular-architects/native-federation';
+import { RemoteErrorComponent } from './remote-loading-fallback.component';
+
+function loadRemoteRoutes(remoteName: string, exposedModule: string) {
+  return () =>
+    loadRemoteModule(remoteName, exposedModule)
+      .then((m) => m.appRoutes)
+      .catch(() => [
+        { path: '**', component: RemoteErrorComponent, data: { remoteName } },
+      ]);
+}
 
 export const appRoutes: Route[] = [
   {
     path: 'catalog',
-    loadChildren: () =>
-      loadRemoteModule('catalog', './routes').then((m) => m.appRoutes),
+    loadChildren: loadRemoteRoutes('catalog', './routes'),
   },
   {
     path: 'cart',
-    loadChildren: () =>
-      loadRemoteModule('cart', './routes').then((m) => m.appRoutes),
+    loadChildren: loadRemoteRoutes('cart', './routes'),
   },
   {
     path: 'checkout',
-    loadChildren: () =>
-      loadRemoteModule('checkout', './routes').then((m) => m.appRoutes),
+    loadChildren: loadRemoteRoutes('checkout', './routes'),
   },
   {
     path: '',

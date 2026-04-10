@@ -4,7 +4,9 @@
     <a routerLink="/catalog" routerLinkActive="active">Catalog</a>
     <a routerLink="/cart" routerLinkActive="active">Cart</a>
     <a routerLink="/checkout" routerLinkActive="active">Checkout</a>
-    <app-cart-badge-wrapper />
+    @if (cartBadge) {
+      <ng-container *ngComponentOutlet="cartBadge" />
+    }
   </nav>
 </header>
 
