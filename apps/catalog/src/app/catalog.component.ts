@@ -1,6 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
-import { Product, addToCart } from '@mfe-shop/cart-state';
+import { Product, CartStateService } from '@mfe-shop/cart-state';
 
 const PRODUCTS: Product[] = [
   { id: 1, name: 'Wireless Headphones', price: 79.99, image: '🎧' },
@@ -62,9 +62,10 @@ const PRODUCTS: Product[] = [
   `],
 })
 export class CatalogComponent {
+  private cartState = inject(CartStateService);
   products = PRODUCTS;
 
   onAddToCart(product: Product) {
-    addToCart(product);
+    this.cartState.addToCart(product);
   }
 }

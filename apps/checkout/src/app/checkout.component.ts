@@ -1,6 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
-import { cartItems, cartTotal, cartCount, clearCart } from '@mfe-shop/cart-state';
+import { CartStateService } from '@mfe-shop/cart-state';
 
 @Component({
   selector: 'app-checkout',
@@ -128,13 +128,15 @@ import { cartItems, cartTotal, cartCount, clearCart } from '@mfe-shop/cart-state
   `],
 })
 export class CheckoutComponent {
-  cartItems = cartItems;
-  cartTotal = cartTotal;
-  cartCount = cartCount;
+  private cartState = inject(CartStateService);
+
+  cartItems = this.cartState.cartItems;
+  cartCount = this.cartState.cartCount;
+  cartTotal = this.cartState.cartTotal;
   orderPlaced = false;
 
   onPlaceOrder() {
     this.orderPlaced = true;
-    clearCart();
+    this.cartState.clearCart();
   }
 }

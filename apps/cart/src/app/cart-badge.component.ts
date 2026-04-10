@@ -1,5 +1,5 @@
-import { Component } from '@angular/core';
-import { cartCount } from '@mfe-shop/cart-state';
+import { Component, inject } from '@angular/core';
+import { CartStateService } from '@mfe-shop/cart-state';
 
 @Component({
   selector: 'app-cart-badge',
@@ -37,5 +37,5 @@ import { cartCount } from '@mfe-shop/cart-state';
   `],
 })
 export class CartBadgeComponent {
-  cartCount = cartCount;
+  cartCount = inject(CartStateService).cartCount;
 }

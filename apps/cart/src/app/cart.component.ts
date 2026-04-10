@@ -1,6 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
-import { cartItems, cartTotal, cartCount, removeFromCart, clearCart } from '@mfe-shop/cart-state';
+import { CartStateService } from '@mfe-shop/cart-state';
 
 @Component({
   selector: 'app-cart',
@@ -92,15 +92,17 @@ import { cartItems, cartTotal, cartCount, removeFromCart, clearCart } from '@mfe
   `],
 })
 export class CartComponent {
-  cartItems = cartItems;
-  cartTotal = cartTotal;
-  cartCount = cartCount;
+  private cartState = inject(CartStateService);
+
+  cartItems = this.cartState.cartItems;
+  cartCount = this.cartState.cartCount;
+  cartTotal = this.cartState.cartTotal;
 
   onRemove(productId: number) {
-    removeFromCart(productId);
+    this.cartState.removeFromCart(productId);
   }
 
   onClear() {
-    clearCart();
+    this.cartState.clearCart();
   }
 }

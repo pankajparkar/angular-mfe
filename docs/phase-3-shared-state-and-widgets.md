@@ -1,9 +1,9 @@
-# Phase 3: Shared Cart State (Signals) + CartBadge Widget Pattern
+# Phase 3: Shared Cart State (Signals + Service) + CartBadge Widget Pattern
 
 ## Overview
 
 This phase adds the core demo functionality:
-- Shared cart state using **Angular Signals** (no RxJS, no NgRx)
+- Shared cart state using **Angular Signals** inside a `CartStateService`
 - Product catalog with "Add to Cart" buttons
 - Cart page showing items with remove/clear
 - Checkout page with order summary and payment form
@@ -32,6 +32,7 @@ This phase adds the core demo functionality:
 │              ┌────────┴────────┐                        │
 │              │  @mfe-shop/     │  <shared lib>          │
 │              │  cart-state     │                         │
+│              │  CartStateService│                        │
 │              │  (Signals)      │                         │
 │              └─────────────────┘                        │
 └─────────────────────────────────────────────────────────┘
@@ -64,7 +65,7 @@ Update the path alias in `tsconfig.base.json`:
 ### `libs/shared/cart-state/src/lib/cart-state/cart-state.ts`
 
 ```typescript
-import { computed, signal } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
 
 export interface Product {
   id: number;
@@ -78,48 +79,56 @@ export interface CartItem {
   quantity: number;
 }
 
-// Global signal-based state — shared across all MFEs via the shared library
-const _cartItems = signal<CartItem[]>([]);
+@Injectable({ providedIn: 'root' })
+export class CartStateService {
+  private readonly _cartItems = signal<CartItem[]>([]);
 
-export const cartItems = _cartItems.asReadonly();
+  readonly cartItems = this._cartItems.asReadonly();
 
-export const cartCount = computed(() =>
-  _cartItems().reduce((total, item) => total + item.quantity, 0)
-);
+  readonly cartCount = computed(() =>
+    this._cartItems().reduce((total, item) => total + item.quantity, 0)
+  );
 
-export const cartTotal = computed(() =>
-  _cartItems().reduce((total, item) => total + item.product.price * item.quantity, 0)
-);
+  readonly cartTotal = computed(() =>
+    this._cartItems().reduce(
+      (total, item) => total + item.product.price * item.quantity,
+      0
+    )
+  );
 
-export function addToCart(product: Product): void {
-  _cartItems.update(items => {
-    const existing = items.find(item => item.product.id === product.id);
-    if (existing) {
-      return items.map(item =>
-        item.product.id === product.id
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
-      );
-    }
-    return [...items, { product, quantity: 1 }];
-  });
-}
+  addToCart(product: Product): void {
+    this._cartItems.update(items => {
+      const existing = items.find(item => item.product.id === product.id);
+      if (existing) {
+        return items.map(item =>
+          item.product.id === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      }
+      return [...items, { product, quantity: 1 }];
+    });
+  }
 
-export function removeFromCart(productId: number): void {
-  _cartItems.update(items => items.filter(item => item.product.id !== productId));
-}
+  removeFromCart(productId: number): void {
+    this._cartItems.update(items =>
+      items.filter(item => item.product.id !== productId)
+    );
+  }
 
-export function clearCart(): void {
-  _cartItems.set([]);
+  clearCart(): void {
+    this._cartItems.set([]);
+  }
 }
 ```
 
-### Why Signals (not a service)?
+### Why a Service with Signals?
 
-- **No DI needed** — signals are plain functions, importable by any MFE
-- **No singleton service headaches** — the signal IS the singleton (module-level)
-- **Works because of `shareAll({ singleton: true })`** — all MFEs share the same instance of `@mfe-shop/cart-state`, so they share the same signal
-- **Perfect for a demo** — audience can see reactive state without RxJS boilerplate
+- **`providedIn: 'root'`** — Angular's standard singleton pattern, familiar to every Angular developer
+- **`singleton: true` in federation config** — ensures all MFEs share the same `@angular/core` injector root, so `providedIn: 'root'` gives a true singleton across remotes
+- **Signals inside the service** — reactive state without RxJS boilerplate
+- **Encapsulated** — private writable signal, public readonly + computed, methods for mutation
+- **Testable** — inject the service in tests, no global state to reset
 
 ### `libs/shared/cart-state/src/index.ts`
 
@@ -134,9 +143,9 @@ export * from './lib/cart-state/cart-state';
 ### `apps/catalog/src/app/catalog.component.ts`
 
 ```typescript
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
-import { Product, addToCart } from '@mfe-shop/cart-state';
+import { Product, CartStateService } from '@mfe-shop/cart-state';
 
 const PRODUCTS: Product[] = [
   { id: 1, name: 'Wireless Headphones', price: 79.99, image: '🎧' },
@@ -168,10 +177,11 @@ const PRODUCTS: Product[] = [
   `,
 })
 export class CatalogComponent {
+  private cartState = inject(CartStateService);
   products = PRODUCTS;
 
   onAddToCart(product: Product) {
-    addToCart(product);
+    this.cartState.addToCart(product);
   }
 }
 ```
@@ -183,9 +193,9 @@ export class CatalogComponent {
 ### `apps/cart/src/app/cart.component.ts`
 
 ```typescript
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
-import { cartItems, cartTotal, cartCount, removeFromCart, clearCart } from '@mfe-shop/cart-state';
+import { CartStateService } from '@mfe-shop/cart-state';
 
 @Component({
   selector: 'app-cart',
@@ -195,33 +205,45 @@ import { cartItems, cartTotal, cartCount, removeFromCart, clearCart } from '@mfe
     <div class="cart">
       <h2>Shopping Cart</h2>
       @if (cartCount() === 0) {
-        <p class="empty">Your cart is empty.</p>
+        <p class="empty">Your cart is empty. Go add some products!</p>
       } @else {
-        @for (item of cartItems(); track item.product.id) {
-          <div class="cart-item">
-            <span>{{ item.product.image }}</span>
-            <div class="item-details">
-              <h3>{{ item.product.name }}</h3>
-              <p>{{ item.product.price | currency }} x {{ item.quantity }}</p>
+        <div class="cart-items">
+          @for (item of cartItems(); track item.product.id) {
+            <div class="cart-item">
+              <span class="item-image">{{ item.product.image }}</span>
+              <div class="item-details">
+                <h3>{{ item.product.name }}</h3>
+                <p>{{ item.product.price | currency }} x {{ item.quantity }}</p>
+              </div>
+              <button class="remove-btn" (click)="onRemove(item.product.id)">Remove</button>
             </div>
-            <button (click)="onRemove(item.product.id)">Remove</button>
-          </div>
-        }
+          }
+        </div>
         <div class="cart-footer">
           <p class="total">Total: {{ cartTotal() | currency }}</p>
-          <button (click)="onClear()">Clear Cart</button>
+          <div class="actions">
+            <button class="clear-btn" (click)="onClear()">Clear Cart</button>
+            <a class="checkout-btn" href="/checkout">Proceed to Checkout</a>
+          </div>
         </div>
       }
     </div>
   `,
 })
 export class CartComponent {
-  cartItems = cartItems;
-  cartTotal = cartTotal;
-  cartCount = cartCount;
+  private cartState = inject(CartStateService);
 
-  onRemove(productId: number) { removeFromCart(productId); }
-  onClear() { clearCart(); }
+  cartItems = this.cartState.cartItems;
+  cartCount = this.cartState.cartCount;
+  cartTotal = this.cartState.cartTotal;
+
+  onRemove(productId: number) {
+    this.cartState.removeFromCart(productId);
+  }
+
+  onClear() {
+    this.cartState.clearCart();
+  }
 }
 ```
 
@@ -232,8 +254,8 @@ export class CartComponent {
 ### `apps/cart/src/app/cart-badge.component.ts`
 
 ```typescript
-import { Component } from '@angular/core';
-import { cartCount } from '@mfe-shop/cart-state';
+import { Component, inject } from '@angular/core';
+import { CartStateService } from '@mfe-shop/cart-state';
 
 @Component({
   selector: 'app-cart-badge',
@@ -248,7 +270,7 @@ import { cartCount } from '@mfe-shop/cart-state';
   `,
 })
 export class CartBadgeComponent {
-  cartCount = cartCount;
+  cartCount = inject(CartStateService).cartCount;
 }
 ```
 
@@ -308,9 +330,9 @@ export class CartBadgeWrapperComponent implements AfterViewInit {
 ### `apps/checkout/src/app/checkout.component.ts`
 
 ```typescript
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
-import { cartItems, cartTotal, cartCount, clearCart } from '@mfe-shop/cart-state';
+import { CartStateService } from '@mfe-shop/cart-state';
 
 @Component({
   selector: 'app-checkout',
@@ -320,7 +342,7 @@ import { cartItems, cartTotal, cartCount, clearCart } from '@mfe-shop/cart-state
     <div class="checkout">
       <h2>Checkout</h2>
       @if (cartCount() === 0) {
-        <p>Nothing to checkout.</p>
+        <p class="empty">Nothing to checkout. Add items from the catalog first.</p>
       } @else {
         <div class="checkout-layout">
           <div class="order-summary">
@@ -332,31 +354,53 @@ import { cartItems, cartTotal, cartCount, clearCart } from '@mfe-shop/cart-state
               </div>
             }
             <div class="summary-total">
-              <strong>Total: {{ cartTotal() | currency }}</strong>
+              <strong>Total</strong>
+              <strong>{{ cartTotal() | currency }}</strong>
             </div>
           </div>
           <div class="payment-form">
             <h3>Payment Details</h3>
-            <!-- Demo form — not functional -->
-            <input placeholder="4242 4242 4242 4242" />
-            <button (click)="onPlaceOrder()">
+            <div class="form-group">
+              <label>Card Number</label>
+              <input type="text" placeholder="4242 4242 4242 4242" />
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Expiry</label>
+                <input type="text" placeholder="MM/YY" />
+              </div>
+              <div class="form-group">
+                <label>CVC</label>
+                <input type="text" placeholder="123" />
+              </div>
+            </div>
+            <button class="pay-btn" (click)="onPlaceOrder()">
               Place Order ({{ cartTotal() | currency }})
             </button>
           </div>
+        </div>
+      }
+
+      @if (orderPlaced) {
+        <div class="success">
+          <h3>Order Placed!</h3>
+          <p>Thank you for your purchase.</p>
         </div>
       }
     </div>
   `,
 })
 export class CheckoutComponent {
-  cartItems = cartItems;
-  cartTotal = cartTotal;
-  cartCount = cartCount;
+  private cartState = inject(CartStateService);
+
+  cartItems = this.cartState.cartItems;
+  cartCount = this.cartState.cartCount;
+  cartTotal = this.cartState.cartTotal;
   orderPlaced = false;
 
   onPlaceOrder() {
     this.orderPlaced = true;
-    clearCart();
+    this.cartState.clearCart();
   }
 }
 ```
@@ -381,7 +425,7 @@ export class CheckoutComponent {
 ## Demo Talking Points
 
 ### Signal-based shared state:
-> "There's no NgRx, no RxJS subjects, no service with DI. Just a plain signal exported from a shared library. Because Native Federation shares this library as a singleton, all three remotes and the shell are reading the same signal instance. Add to cart in the catalog remote — the badge updates in the shell. That's Signals + Module Federation working together."
+> "There's no NgRx, no RxJS subjects. Just a `CartStateService` with Angular Signals inside, exported from a shared library. Because Native Federation shares this library as a singleton via `shareAll({ singleton: true })`, all three remotes and the shell share the same service instance. Add to cart in the catalog remote — the badge updates in the shell. That's Signals + DI + Module Federation working together."
 
 ### Widget pattern:
 > "The CartBadge component is owned by the Cart team. The Shell team doesn't import it — they use `loadRemoteModule('cart', './CartBadge')` to pull it in at runtime. If the Cart team updates the badge, the Shell gets the new version without rebuilding."
@@ -393,4 +437,4 @@ export class CheckoutComponent {
 
 ## Next: Phase 4
 
-Polish, standalone remote verification, and final demo walkthrough.
+Deeper dive into why Signals + Service works in the MFE context and the singleton guarantee.
