@@ -5,6 +5,7 @@ module.exports = withNativeFederation({
 
   exposes: {
     './routes': './apps/cart/src/app/app.routes.ts',
+    './CartBadge': './apps/cart/src/app/cart-badge.component.ts',
   },
 
   shared: {
